@@ -3,22 +3,55 @@ import requests
 import os
 import urllib.parse
 import google.auth
+from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
 # Configuración (REEMPLAZA con tus credenciales)
 CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID')
 CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET')
-REDIRECT_URI = "https://app-oapp-demo-aymupnbzhxybz98kpewzgr.streamlit.app/"  # Asegúrate de que coincida con la configuración en Google Cloud
+REDIRECT_URI = "https://app-oapp-demo-aymupnbzhxybz98kpewzgr.streamlit.app/"
 AUTHORIZE_URL = "https://accounts.google.com/o/oauth2/auth"
 TOKEN_URL = "https://accounts.google.com/o/oauth2/token"
 SCOPE = ["profile", "email"]
+
+# ID de la hoja de cálculo
+SAMPLE_SPREADSHEET_ID = "1xBVKG4Aby7u4ey-fp3sD25wgL0Yd3U1y8Tdr_Xdxtb0"  # Reemplaza con el ID de tu hoja de cálculo
+
+# Rango de celdas a leer
+SAMPLE_RANGE_NAME = "BANCO DE PREGUNTAS"  # Reemplaza con el rango de celdas que quieres leer
+
+# Clave de la cuenta de servicio
+SERVICE_ACCOUNT_FILE = st.secrets["google_sheets"]["service_account_file"] # Lee la clave del archivo secrets.toml
 
 # Estado de la sesión
 if 'access_token' not in st.session_state:
     st.session_state.access_token = None
 
-# Si no hay token, mostrar el botón de inicio de sesión
+# Función para leer datos de Google Sheets
+def read_from_google_sheets():
+    try:
+        creds = service_account.Credentials.from_service_account_info(st.secrets["google_sheets"]["service_account_file"], scopes=['https://www.googleapis.com/auth/spreadsheets.readonly'])
+
+        service = build('sheets', 'v4', credentials=creds)
+
+        # Call the Sheets API
+        sheet = service.spreadsheets()
+        result = sheet.values().get(spreadsheetId=SAMPLE_SPREADSHEET_ID,
+                                    range=SAMPLE_RANGE_NAME).execute()
+        values = result.get('values', [])
+
+        if not values:
+            st.write('No data found.')
+            return None
+
+        return values
+
+    except HttpError as err:
+        st.write(f"Error al acceder a Google Sheets: {err}")
+        return None
+
+# Autenticación
 if not st.session_state.access_token:
     # Crear la URL de autorización
     params = {
@@ -68,42 +101,16 @@ else:
     st.write('Información del usuario:', user_info)
 
     st.write("Contenido PREMIUM aquí...")
-    st.balloons()
+
     # Leer datos de Google Sheets
-SAMPLE_SPREADSHEET_ID = "1xBVKG4Aby7u4ey-fp3sD25wgL0Yd3U1y8Tdr_Xdxtb0"  # Reemplaza con el ID de tu hoja de cálculo
-SAMPLE_RANGE_NAME = "BANCO DE PREGUNTAS"  # Reemplaza con el rango de celdas que quieres leer
+    data = read_from_google_sheets()
+    if data:
+        st.write("Datos de Google Sheets:")
+        st.dataframe(data)
 
-def read_from_google_sheets():
-    try:
-        creds = google.auth.default(scopes=['https://www.googleapis.com/auth/spreadsheets.readonly'])[0]
-
-        service = build('sheets', 'v4', credentials=creds)
-
-        # Call the Sheets API
-        sheet = service.spreadsheets()
-        result = sheet.values().get(spreadsheetId=SAMPLE_SPREADSHEET_ID,
-                                    range=SAMPLE_RANGE_NAME).execute()
-        values = result.get('values', [])
-
-        if not values:
-            st.write('No data found.')
-            return None
-
-        return values
-
-    except HttpError as err:
-        st.write(f"Error al acceder a Google Sheets: {err}")
-        return None
-
-data = read_from_google_sheets()
-if data:
-    st.write("Datos de Google Sheets:")
-    st.dataframe(data)
+    st.balloons()
 
     # Botón de cierre de sesión
     if st.button('Cerrar sesión'):
         st.session_state.access_token = None
         st.rerun()
-       
-st.write("GOOGLE_CLIENT_ID:", os.environ.get('GOOGLE_CLIENT_ID'))
-st.write("GOOGLE_CLIENT_SECRET:", os.environ.get('GOOGLE_CLIENT_SECRET'))
