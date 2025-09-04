@@ -2,6 +2,9 @@ import streamlit as st
 import requests
 import os
 import urllib.parse
+import google.auth
+from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 
 # Configuración (REEMPLAZA con tus credenciales)
 CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID')
@@ -66,6 +69,36 @@ else:
 
     st.write("Contenido PREMIUM aquí...")
     st.balloons()
+    # Leer datos de Google Sheets
+SAMPLE_SPREADSHEET_ID = "1xBVKG4Aby7u4ey-fp3sD25wgL0Yd3U1y8Tdr_Xdxtb0"  # Reemplaza con el ID de tu hoja de cálculo
+SAMPLE_RANGE_NAME = "BANCO DE PREGUNTAS"  # Reemplaza con el rango de celdas que quieres leer
+
+def read_from_google_sheets():
+    try:
+        creds = google.auth.default(scopes=['https://www.googleapis.com/auth/spreadsheets.readonly'])[0]
+
+        service = build('sheets', 'v4', credentials=creds)
+
+        # Call the Sheets API
+        sheet = service.spreadsheets()
+        result = sheet.values().get(spreadsheetId=SAMPLE_SPREADSHEET_ID,
+                                    range=SAMPLE_RANGE_NAME).execute()
+        values = result.get('values', [])
+
+        if not values:
+            st.write('No data found.')
+            return None
+
+        return values
+
+    except HttpError as err:
+        st.write(f"Error al acceder a Google Sheets: {err}")
+        return None
+
+data = read_from_google_sheets()
+if data:
+    st.write("Datos de Google Sheets:")
+    st.dataframe(data)
 
     # Botón de cierre de sesión
     if st.button('Cerrar sesión'):
