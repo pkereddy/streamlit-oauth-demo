@@ -6,7 +6,7 @@ import urllib.parse
 # Configuración (REEMPLAZA con tus credenciales)
 CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID')
 CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET')
-REDIRECT_URI = "http://localhost:8501"  # Asegúrate de que coincida con la configuración en Google Cloud
+REDIRECT_URI = "https://app-oapp-demo-aymupnbzhxybz98kpewzgr.streamlit.app/"  # Asegúrate de que coincida con la configuración en Google Cloud
 AUTHORIZE_URL = "https://accounts.google.com/o/oauth2/auth"
 TOKEN_URL = "https://accounts.google.com/o/oauth2/token"
 SCOPE = ["profile", "email"]
