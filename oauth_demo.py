@@ -71,4 +71,6 @@ else:
     if st.button('Cerrar sesión'):
         st.session_state.access_token = None
         st.rerun()
-        # Este es un comentario de prueba para verificar la conexión con GitHub.
+       
+st.write("GOOGLE_CLIENT_ID:", os.environ.get('GOOGLE_CLIENT_ID'))
+st.write("GOOGLE_CLIENT_SECRET:", os.environ.get('GOOGLE_CLIENT_SECRET'))
