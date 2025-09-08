@@ -1,11 +1,7 @@
 import streamlit as st
-import requests
+import pandas as pd
+from urllib.parse import quote
 import os
-import urllib.parse
-import google.auth
-from google.oauth2 import service_account
-from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
 
 # Configuración (REEMPLAZA con tus credenciales)
 CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID')
@@ -16,39 +12,25 @@ TOKEN_URL = "https://accounts.google.com/o/oauth2/token"
 SCOPE = ["profile", "email"]
 
 # ID de la hoja de cálculo
-SAMPLE_SPREADSHEET_ID = "1xBVKG4Aby7u4ey-fp3sD25wgL0Yd3U1y8Tdr_Xdxtb0"  # Reemplaza con el ID de tu hoja de cálculo
-
-# Rango de celdas a leer
-SAMPLE_RANGE_NAME = "BANCO DE PREGUNTAS"  # Reemplaza con el rango de celdas que quieres leer
-
-# Clave de la cuenta de servicio
-SERVICE_ACCOUNT_FILE = st.secrets["google_sheets"]["service_account_file"] # Lee la clave del archivo secrets.toml
+SPREADSHEET_ID = "1xBVKG4Aby7u4ey-fp3sD25wgL0Yd3U1y8Tdr_Xdxtb0"  # Reemplaza con el ID de tu hoja de cálculo
+WORKSHEET_NAME = "BANCO DE PREGUNTAS"
 
 # Estado de la sesión
 if 'access_token' not in st.session_state:
     st.session_state.access_token = None
 
-# Función para leer datos de Google Sheets
-def read_from_google_sheets():
+# Función para cargar datos
+@st.cache_data(ttl=300)
+def load_data():
     try:
-        creds = service_account.Credentials.from_service_account_info(st.secrets["google_sheets"]["service_account_file"], scopes=['https://www.googleapis.com/auth/spreadsheets.readonly'])
-
-        service = build('sheets', 'v4', credentials=creds)
-
-        # Call the Sheets API
-        sheet = service.spreadsheets()
-        result = sheet.values().get(spreadsheetId=SAMPLE_SPREADSHEET_ID,
-                                    range=SAMPLE_RANGE_NAME).execute()
-        values = result.get('values', [])
-
-        if not values:
-            st.write('No data found.')
-            return None
-
-        return values
-
-    except HttpError as err:
-        st.write(f"Error al acceder a Google Sheets: {err}")
+        worksheet_name_encoded = quote(WORKSHEET_NAME)
+        csv_url = f'https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/gviz/tq?tqx=out:csv&sheet={worksheet_name_encoded}'
+        df = pd.read_csv(csv_url)
+        df.fillna('', inplace=True)
+        return df
+    except Exception as e:
+        st.error(f"Error al leer la hoja pública: {e}.")
+        st.info("Asegúrate de que el ID de la hoja sea correcto y que el permiso en 'Compartir' sea 'Cualquier persona con el enlace puede ver'.")
         return None
 
 # Autenticación
@@ -102,11 +84,10 @@ else:
 
     st.write("Contenido PREMIUM aquí...")
 
-    # Leer datos de Google Sheets
-    data = read_from_google_sheets()
-    if data:
-        st.write("Datos de Google Sheets:")
-        st.dataframe(data)
+    # Carga los datos de Google Sheets
+    df = load_data()
+    if df is not None:
+        st.dataframe(df)
 
     st.balloons()
 
